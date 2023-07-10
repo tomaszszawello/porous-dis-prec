@@ -17,7 +17,6 @@ create_matrices(SimInputData, Graph, Incidence) -> Edges
     initialize matrices and edge data in Incidence and Edges classes
 """
 
-from dataclasses import dataclass
 import numpy as np
 import scipy.sparse as spr
 
@@ -25,7 +24,6 @@ from config import SimInputData
 from delaunay import Graph
 
 
-@dataclass
 class Incidence():
     """ Contains all necessary incidence matrices.
 
@@ -55,7 +53,6 @@ class Incidence():
     inlet: spr.csr_matrix = spr.csr_matrix(0)
     "connections of edges with inlet nodes (ne x nsq)"
 
-@dataclass
 class Edges():
     """ Contains all data connected with network edges.
 
@@ -113,9 +110,16 @@ class Edges():
     ("edges connecting the boundaries (assuring PBC; vector with ones for \
      boundary edge indices and zero otherwise); we need them to disinclude \
      them for drawing, to make the draw legible")
-
-    def __post_init__(self):
-        self.diams_initial: np.ndarray = self.diams
+    def __init__(self, diams, lens, flow, inlet, outlet, edge_list, \
+        boundary_list):
+        self.diams = diams
+        self.lens = lens
+        self.flow = flow
+        self.inlet = inlet
+        self.outlet = outlet
+        self.edge_list = edge_list
+        self.boundary_list = boundary_list
+        self.diams_initial = diams
 
 def create_matrices(sid: SimInputData, graph: Graph, inc: Incidence) -> Edges:
     """ Create incidence matrices and edges class for graph parameters.

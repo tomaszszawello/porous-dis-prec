@@ -5,4 +5,5 @@
 *.vtk
 *.json
 *.zip
+*.pdf
 test.py

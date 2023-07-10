@@ -69,34 +69,38 @@ class Graph(nx.graph.Graph):
         nx.set_edge_attributes(self, dict(zip(edges.edge_list, edges.flow)), \
             'q')
 
-def find_node(graph: Graph, pos: tuple[float, float]) -> int:
-    """ Find node in the graph closest to the given position.
+    def find_node(self, pos: tuple[float, float]) -> int:
+        """ Find node in the graph closest to the given position.
 
-    Parameters
-    -------
-    graph : Graph class object
-        network and all its properties
+        Parameters
+        -------
+        graph : Graph class object
+            network and all its properties
 
-    pos : tuple
-        approximate position of the wanted node
+        pos : tuple
+            approximate position of the wanted node
 
-    Returns
-    -------
-    n_min : int
-        index of the node closest to the given position
-    """
-    def r_squared(node):
-        x, y = graph.nodes[node]['pos']
-        r_sqr = (x - pos[0]) ** 2 + (y - pos[1]) ** 2
-        return r_sqr
-    r_min = len(graph.nodes())
-    n_min = 0
-    for node in graph.nodes():
-        r = r_squared(node)
-        if r < r_min:
-            r_min = r
-            n_min = node
-    return n_min
+        Returns
+        -------
+        n_min : int
+            index of the node closest to the given position
+            
+        TO DO: fix for own geo
+        """
+        def r_squared(node):
+            x, y = self.nodes[node]['pos']
+            r_sqr = (x - pos[0]) ** 2 + (y - pos[1]) ** 2
+            return r_sqr
+        n = len(self.nodes()) ** 0.5
+        r_min = len(self.nodes())
+        n_min = 0
+        for node in self.nodes():
+            if node >= n and node < n * (n - 1):
+                r = r_squared(node)
+                if r < r_min:
+                    r_min = r
+                    n_min = node
+        return n_min
 
 def set_geometry(sid: SimInputData, graph: Graph) -> None:
     """ Set input and output nodes based on network geometry.
@@ -127,9 +131,10 @@ def set_geometry(sid: SimInputData, graph: Graph) -> None:
         in_nodes_pos = sid.in_nodes_own
         out_nodes_pos = sid.out_nodes_own
         for pos in in_nodes_pos:
-            graph.in_nodes.append(find_node(pos))
+            graph.in_nodes.append(graph.find_node(pos))
         for pos in out_nodes_pos:
-            graph.out_nodes.append(find_node(pos))
+            graph.out_nodes.append(graph.find_node(pos))
+
 
 def build_delaunay_net(sid: SimInputData) -> Graph:
     """ Build Delaunay network with parameters from config.
@@ -174,12 +179,16 @@ def build_delaunay_net(sid: SimInputData) -> Graph:
         # sort the vertices
         # (sorting avoids duplicated edges being added to the set)
         # and add to the edges set
-        edge = sorted([delTri.vertices[node, 0], delTri.vertices[node, 1]])
-        edges.add((int(edge[0]), int(edge[1])))
-        edge = sorted([delTri.vertices[node, 0], delTri.vertices[node, 2]])
-        edges.add((int(edge[0]), int(edge[1])))
-        edge = sorted([delTri.vertices[node, 1], delTri.vertices[node, 2]])
-        edges.add((int(edge[0]), int(edge[1])))
+        n1, n2, n3 = delTri.simplices[node]
+        if n1 != n2:
+            edge = sorted([n1, n2])
+            edges.add((int(edge[0]), int(edge[1])))
+        if n1 != n3:
+            edge = sorted([n1, n3])
+            edges.add((int(edge[0]), int(edge[1])))
+        if n2 != n3:
+            edge = sorted([n2, n3])
+            edges.add((int(edge[0]), int(edge[1])))
 
     edges = list(edges)
     edges_lengths = []
@@ -235,8 +244,27 @@ def build_delaunay_net(sid: SimInputData) -> Graph:
     graph_copy = graph.copy()
     for node, neigh in graph_copy.edges():
         l = graph[node][neigh]['l']
-        if l > 3 * length_avr:
+        #if l > 3 * length_avr:
+        #    graph.remove_edge(node, neigh)
+        if node < sid.n and neigh < sid.n:
             graph.remove_edge(node, neigh)
+        elif node >= sid.n * (sid.n - 1) and neigh >= sid.n * (sid.n - 1):
+            graph.remove_edge(node, neigh)
+
+    graph_copy = graph.copy()
+    for node in graph.nodes():
+        #l = graph[node][neigh]['l']
+        #if l > 3 * length_avr:
+        #    graph.remove_edge(node, neigh)
+        if len(list(graph.neighbors(node))) == 0:
+            new_neigh = graph.find_node(graph.nodes[node]["pos"])
+            graph.add_edge(node, new_neigh)
+            graph[node][new_neigh]['l'] = \
+                np.linalg.norm(np.array(graph.nodes[node]["pos"]) \
+                - np.array(graph.nodes[neigh]["pos"]))
+            graph[node][new_neigh]['d'] = truncnorm.rvs(sid.dmin, \
+                sid.dmax, loc = sid.d0, scale = sid.sigma_d0)
+            graph[node][new_neigh]['q'] = 0
 
     graph.boundary_edges = boundary_edges
     return graph

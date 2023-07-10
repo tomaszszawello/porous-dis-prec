@@ -6,13 +6,13 @@ from VARIOUS section) are set by the user before starting the simulation.
 Most notable parameters are: n - network size, iters/tmax - simulation length,
 Da_eff, G, K, Gamma - dissolution/precipitation parameters, include_cc - turn
 on precipitation, load - build a new network or load a previous one.
+
+TO DO: fix own geometry
 """
 
-from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass
 class SimInputData:
     ''' Configuration class for the whole simulation.
     '''
@@ -91,7 +91,7 @@ class SimInputData:
     "name of loaded network"
 
     # GEOMETRY
-    geo: str = "rect"
+    geo: str = "rect" # WARNING - own is deprecated
     ("type of geometry: 'rect' - rectangular, 'own' - custom inlet and outlet \
      nodes, set in in/out_nodes_own")
     periodic: str = 'top'

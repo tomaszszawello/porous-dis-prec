@@ -47,6 +47,7 @@ class Data():
     """
     t = []
     pressure = []
+    order = []
     cb_out = []
     cc_out = []
     delta_b = 0.
@@ -129,6 +130,8 @@ class Data():
         """
         self.t.append(sid.old_t)
         self.pressure.append(np.max(p))
+        self.order.append((sid.ne - np.sum(edges.flow ** 2) ** 2 \
+            / np.sum(edges.flow ** 4)) / (sid.ne - 1))
         # calculate the difference between inflow and outflow of each substance
         delta = np.abs((np.abs(inc.incidence.T < 0) @ (np.abs(edges.flow) \
             * edges.inlet) - np.abs(inc.incidence.T > 0) @ (np.abs(edges.flow) \

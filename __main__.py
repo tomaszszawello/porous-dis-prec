@@ -32,7 +32,8 @@ iters, tmax, i, t, breakthrough = initialize_iterators(sid)
 
 # main loop
 # runs until we reach iteration limit or time limit or network is dissolved
-while t < tmax and i < iters and not breakthrough:
+#while t < tmax and i < iters and not breakthrough:
+while t < tmax and i < iters:  
     print(f'Iter {i + 1}/{iters} Time {t:.2f}/{tmax:.2f}')
     # find pressure and update flow in edges
     pressure = Pr.solve_flow(sid, inc, graph, edges, pressure_b)
@@ -44,8 +45,16 @@ while t < tmax and i < iters and not breakthrough:
     if i % sid.plot_every == 0:
         data.check_data(edges)
         graph.update_network(edges)
-        Dr.uniform_hist(sid, graph, edges, cb, cc, \
-            f'network_{sid.old_iters:.2f}.png', "d")
+        # Dr.uniform_hist(sid, graph, edges, cb, cc, \
+        #     f'network_{sid.old_iters:.2f}.png', "d")
+        # Dr.draw(sid, graph, edges, \
+        #     f'network_{sid.old_iters:.2f}.png', "d")
+    if t == 0:
+        data.check_init_slice_channelization(graph, inc, edges)
+        data.check_slice_channelization(graph, inc, edges, t)
+    elif sid.old_t // sid.track_every != (sid.old_t + sid.dt) \
+        // sid.track_every:
+        data.check_slice_channelization(graph, inc, edges, sid.old_t)
     # grow/shrink diameters and update them in edges, update volumes with
     # dissolved/precipitated values, check if network dissolved, find new
     # timestep
@@ -59,8 +68,11 @@ while t < tmax and i < iters and not breakthrough:
 if i != 1:
     data.check_data(edges)
     graph.update_network(edges)
-    Dr.uniform_hist(sid, graph, edges, cb, cc, \
-        f'network_{sid.old_iters:.2f}.png', "d")
+    # Dr.uniform_hist(sid, graph, edges, cb, cc, \
+    #     f'network_{sid.old_iters:.2f}.png', "d")
+    Dr.draw(sid, graph, edges, \
+    f'network_{sid.old_iters:.2f}.png', "d")
     Sv.save('/save.dill', sid, graph)
     data.save_data()
     data.plot_data()
+    data.plot_slice_channelization(graph)

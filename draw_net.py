@@ -17,8 +17,8 @@ import networkx as nx
 import numpy as np
 
 from config import SimInputData
-from delaunay import Graph
-from incidence import Edges
+from network import Edges, Graph
+from incidence import Incidence
 
 
 def uniform_hist(sid: SimInputData, graph: Graph, edges: Edges, \
@@ -86,13 +86,13 @@ def uniform_hist(sid: SimInputData, graph: Graph, edges: Edges, \
             * (edges.diams < edges.diams_initial / 2)
         qs2 = (1 - edges.boundary_list) * edges.diams \
             * (edges.diams >= edges.diams_initial / 2)
-        nx.draw_networkx_edges(graph, pos, edge_color = 'r', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'r', \
             width = sid.ddrawconst * np.array(qs1))
-        nx.draw_networkx_edges(graph, pos, edge_color = 'k', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
             width = sid.ddrawconst * np.array(qs2))
     elif data == 'q':
         qs = (1 - edges.boundary_list) * np.abs(edges.flow)
-        nx.draw_networkx_edges(graph, pos, edge_color = 'k', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
             width = sid.ddrawconst * np.array(qs))
     # draw histograms with data below the network
     plt.subplot(spec[cols]).set_title('Diameter')
@@ -149,6 +149,8 @@ def draw(sid: SimInputData, graph: Graph, edges: Edges, \
     """
     # draw first panel for the network
     plt.axis('equal')
+    
+    plt.figure(figsize=(sid.figsize, sid.figsize))
     pos = nx.get_node_attributes(graph, 'pos')
     # draw inlet and outlet nodes
     x_in, y_in = [], []
@@ -167,14 +169,15 @@ def draw(sid: SimInputData, graph: Graph, edges: Edges, \
             * (edges.diams < edges.diams_initial / 2)
         qs2 = (1 - edges.boundary_list) * edges.diams \
             * (edges.diams >= edges.diams_initial / 2)
-        nx.draw_networkx_edges(graph, pos, edge_color = 'r', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'r', \
             width = sid.ddrawconst * np.array(qs1))
-        nx.draw_networkx_edges(graph, pos, edge_color = 'k', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
             width = sid.ddrawconst * np.array(qs2))
     elif data == 'q':
         qs = (1 - edges.boundary_list) * np.abs(edges.flow)
-        nx.draw_networkx_edges(graph, pos, edge_color = 'k', \
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
             width = sid.ddrawconst * np.array(qs))
     # save file in the directory
+    plt.axis('off')
     plt.savefig(sid.dirname + "/" + name)
     plt.close()

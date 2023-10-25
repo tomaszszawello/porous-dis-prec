@@ -15,7 +15,8 @@ import numpy as np
 import scipy.sparse as spr
 
 from config import SimInputData
-from incidence import Edges, Incidence
+from network import Edges
+from incidence import Incidence
 
 
 def update_diameters(sid: SimInputData, inc: Incidence, edges: Edges, \
@@ -75,13 +76,16 @@ def update_diameters(sid: SimInputData, inc: Incidence, edges: Edges, \
         breakthrough = True
         print ('Network dissolved.')
     if sid.include_adt:
-        dt_next = sid.growth_rate / np.max(np.abs((diams_new - edges.diams) \
-            / sid.dt / edges.diams))
+        diams_rate = np.abs((diams_new - edges.diams) / edges.diams)
+        diams_rate = np.array(np.ma.fix_invalid(diams_rate, fill_value = 0))
+        dt_next = sid.growth_rate / sid.dt / np.max(diams_rate)
         if dt_next > sid.dt_max:
             dt_next = sid.dt_max
     else:
         dt_next = sid.dt
     edges.diams = diams_new
+    if np.max(edges.diams / edges.diams_initial) > 300:
+        breakthrough = True
     return breakthrough, dt_next
 
 def solve_d(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray) \
@@ -120,6 +124,7 @@ def solve_d(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray) \
     change = cb_in * np.abs(edges.flow) / (sid.Da * edges.lens \
         * edges.diams) * (1 - np.exp(-sid.Da / (1 + sid.G * edges.diams) \
         * edges.diams * edges.lens / np.abs(edges.flow))) * sid.dt
+    change = np.array(np.ma.fix_invalid(change, fill_value = 0))
     return change
 
 def solve_dp(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray, \

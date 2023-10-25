@@ -19,25 +19,27 @@ class SimInputData:
     # GENERAL
     n: int = 100
     "network size"
-    iters: int = 10000
+    iters: int = 100000
     "maximum number of iterations"
     tmax: float = 5000.
     "maximum time"
-    plot_every: int = 500
+    plot_every: int = 100
     "frequency of plotting the results"
-    track_every: int = 200
+    track_every: int = 100000
 
     # DISSOLUTION & PRECIPITATION
-    Da_eff: float = 1.
+    Da_eff: float = 1
     "effective Damkohler number"
-    G: float = 1.
+    G: float = 1
     "diffusion to reaction ratio"
     Da: float = Da_eff * (1 + G)
     "Damkohler number"
     K: float = 0.5
     "precipitation to dissolution reaction rate"
-    Gamma: float = 1.25
+    Gamma: float = 2.
     "precipitation to dissolution acid capacity number"
+    merge_length: float = 100.
+    "diameter scale to length scale ratio for merging"
 
     # INCLUDE
     include_adt: bool = True
@@ -56,7 +58,7 @@ class SimInputData:
     # TIME
     dt: float = 0.01
     "initial timestep (if no adaptive timestep, timestep for whole simulation)"
-    growth_rate: float = 0.01
+    growth_rate: float = 0.02
     ("maximum percentage growth of an edges (used for finding adaptive \
      timestep)")
     dt_max: float = 5.
@@ -65,9 +67,9 @@ class SimInputData:
     # DIAMETERS
     d0: float = 1.
     "initial dimensionless mean diameter"
-    sigma_d0: float = 0.1
+    sigma_d0: float = 0.5
     "initial diameter standard deviation"
-    dmin: float = 0.
+    dmin: float = 0.01
     "minimum diameter"
     dmax: float = 1000.
     "maximum diameter"
@@ -77,18 +79,18 @@ class SimInputData:
     # DRAWING
     figsize: float = 10.
     "figure size"
-    qdrawconst: float = 15.
+    qdrawconst: float = 30.
     "constant for improving flow drawing"
-    ddrawconst: float = 0.05
+    ddrawconst: float = 1 / merge_length
     "constant for improving diameter drawing"
 
     # INITIALIZATION
-    load: int = 0
+    load: int = 2
     ("type of loading: 0 - build new network based on config and start new \
      simulation, 1 - load previous network from load_name and continue \
      simulation, 2 - load template network from load_name and start new \
      simulation")
-    load_name: str = 'rect100/G1.00Daeff1.00/0'
+    load_name: str = 'rect100/G1.00Daeff1.00/39'
     "name of loaded network"
 
     # GEOMETRY
@@ -115,6 +117,8 @@ class SimInputData:
     "total iterations of simulation"
     old_t: float = 0.
     "total time of simulation"
+    Q_in = 1.
+    "total inlet flow (updated later)"
     dirname: str = geo + str(n) + '/' + f'G{G:.2f}Daeff{Da_eff:.2f}'
     "directory of simulation"
     

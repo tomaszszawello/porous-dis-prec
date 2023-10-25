@@ -10,10 +10,12 @@ saving the config file (to know simulation parameters).
 import dill
 
 from config import SimInputData
-from delaunay import Graph
+from incidence import Incidence
+from network import Edges, Graph
 
 
-def save(name: str, sid: SimInputData, graph: Graph) -> None:
+def save(name: str, sid: SimInputData, graph: Graph, inc: Incidence, \
+    edges: Edges) -> None:
     """ Save all simulation data.
 
     This function saves all data necessary to either continue simulation from
@@ -27,11 +29,11 @@ def save(name: str, sid: SimInputData, graph: Graph) -> None:
     graph : Graph class object
         network and all its properties
     """
-    data = [sid, graph]
+    data = [sid, graph, inc, edges]
     with open(sid.dirname+name, 'wb') as file:
         dill.dump(data, file)
 
-def load(name: str) -> tuple[SimInputData, Graph]:
+def load(name: str) -> tuple[SimInputData, Graph, Incidence, Edges]:
     """ Load all simulation data.
 
     This function loads data necessary to recreate the simulation or continue
@@ -55,7 +57,9 @@ def load(name: str) -> tuple[SimInputData, Graph]:
         data = dill.load(file)
     sid = data[0]
     graph = data[1]
-    return  sid, graph
+    inc = data[2]
+    edges = data[3]
+    return  sid, graph, inc, edges
 
 def save_config(sid: SimInputData) -> None:
     """ Save configuration of simulation to text file.

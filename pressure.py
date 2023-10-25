@@ -18,8 +18,8 @@ import numpy as np
 import scipy.sparse as spr
 
 from config import SimInputData
-from incidence import Edges, Incidence
-from delaunay import Graph
+from network import Edges, Graph
+from incidence import Incidence
 from utils import solve_equation
 
 
@@ -94,13 +94,20 @@ def solve_flow(sid: SimInputData, inc: Incidence, graph: Graph, edges: Edges, \
     # zero pressure; so for boundary nodes we zero the elements of p_matrix
     # and add identity for those rows
     p_matrix = p_matrix.multiply(inc.middle) + inc.boundary
+    diag = p_matrix.diagonal()
+    # fix for nodes with no connections
+    for i, node in enumerate(diag):
+        if node == 0:
+            diag[i] = 1
+    # replace diagonal
+    p_matrix.setdiag(diag)
     # solve matrix @ pressure = pressure_b
     pressure = solve_equation(p_matrix, pressure_b)
     # normalize pressure in inlet nodes to match condition for constant inlet
     # flow
     q_in = np.abs(np.sum(edges.diams ** 4 / edges.lens * (inc.inlet \
         @ pressure)))
-    pressure *= sid.qin * 2 * len(graph.in_nodes) / q_in
+    pressure *= sid.Q_in / q_in
     # update flow
     edges.flow = edges.diams ** 4 / edges.lens * (inc.incidence @ pressure)
     return pressure

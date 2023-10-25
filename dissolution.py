@@ -17,8 +17,8 @@ import numpy as np
 import scipy.sparse as spr
 
 from config import SimInputData
-from delaunay import Graph
-from incidence import Edges, Incidence
+from network import Edges, Graph
+from incidence import Incidence
 from utils import solve_equation
 
 
@@ -95,6 +95,7 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     # find vector with non-diagonal coefficients
     qc = edges.flow * np.exp(-np.abs(sid.Da / (1 + sid.G * edges.diams) \
         * edges.diams * edges.lens / edges.flow))
+    qc = np.array(np.ma.fix_invalid(qc, fill_value = 0))
     qc_matrix = np.abs(inc.incidence.T @ spr.diags(qc) @ inc.incidence)
     cb_matrix = cb_inc.multiply(qc_matrix)
     # find diagonal coefficients (inlet flow for each node)
@@ -111,6 +112,10 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
             diag[node] *= 2
         else:
             diag[node] = 1
+    # fix for nodes with no connections
+    for i, node in enumerate(diag):
+        if node == 0:
+            diag[i] = 1
     # replace diagonal
     cb_matrix.setdiag(diag)
     cb = solve_equation(cb_matrix, cb_b)

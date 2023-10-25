@@ -19,8 +19,8 @@ import numpy as np
 import scipy.sparse as spr
 
 from config import SimInputData
-from delaunay import Graph
-from incidence import Edges, Incidence
+from network import Edges, Graph
+from incidence import Incidence
 from utils import solve_equation
 
 

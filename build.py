@@ -12,6 +12,7 @@ build(None) -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]
 """
 
 import delaunay as De
+import network as Ne
 import incidence as In
 import save as Sv
 
@@ -51,22 +52,21 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
     # create incidence matrices, edges etc., save template of the simulation
     # and the configuration
     if SimInputData.load == 0:
+        print ('load 0')
         sid = SimInputData()
         make_dir(sid)
         inc = In.Incidence()
-        graph = De.build_delaunay_net(sid)
-        De.set_geometry(sid, graph)
-        edges = In.create_matrices(sid, graph, inc)
+        graph, edges = Ne.build_delaunay_net(sid, inc)
+        Ne.set_geometry(sid, graph)
+        In.create_matrices(sid, graph, inc, edges)
         data = Data(sid)
-        Sv.save('/template.dill', sid, graph)
+        Sv.save('/template.dill', sid, graph, inc, edges)
         Sv.save_config(sid)
     # 1 - load config and network from data saved at the end of previous
     # simulation, from directory specified by load_name; based on that recreate
     # incidence and edges (with saved diameters), continue simulation
     elif SimInputData.load == 1:
-        sid, graph = Sv.load(SimInputData.load_name+'/save.dill')
-        inc = In.Incidence()
-        edges = In.create_matrices(sid, graph, inc)
+        sid, graph, inc, edges = Sv.load(SimInputData.load_name+'/save.dill')
         data = Data(sid)
     # 2 - load config from SimInputData, but use graph from a template saved in
     # the directory specified by load_name; based on that create incidence and
@@ -74,15 +74,16 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
     # to the geometry of the graph; save simulation in the load_name directory,
     # but in an additional folder named template, save new config there
     elif SimInputData.load == 2:
+        print ('load 2')
         sid = SimInputData()
-        sid2, graph = Sv.load(SimInputData.load_name+'/template.dill')
+        sid2, graph, inc, edges \
+            = Sv.load(SimInputData.load_name+'/template.dill')
+        sid.Q_in = sid.qin * 2 * len(graph.in_nodes)
         sid.n = sid2.n
         sid.nsq = sid2.nsq
         sid.ne = sid2.ne
         sid.dirname = sid2.dirname + '/template'
         make_dir(sid)
-        inc = In.Incidence()
-        edges = In.create_matrices(sid, graph, inc)
         data = Data(sid)
         Sv.save_config(sid)
     return sid, inc, graph, edges, data

@@ -21,8 +21,8 @@ import numpy as np
 import scipy.sparse as spr
 
 from config import SimInputData
-from delaunay import Graph
-from incidence import Edges, Incidence
+from network import Edges, Graph
+from incidence import Incidence
 
 
 class Data():
@@ -82,6 +82,17 @@ class Data():
                 is_saved = True
             except PermissionError:
                 pass
+        # self slice data to slices.txt
+        is_saved = False
+        while not is_saved: # prevents problems with opening text file
+            try:
+                file = open(self.dirname + '/slices.txt', 'a', \
+                    encoding = "utf-8")
+                np.savetxt(file, self.slices)
+                file.close()
+                is_saved = True
+            except PermissionError:
+                pass
 
     def check_data(self, edges: Edges) -> None:
         """ Check the key physical parameters of the simulation.
@@ -100,6 +111,8 @@ class Data():
         Q_in = np.sum(edges.inlet * np.abs(edges.flow))
         Q_out = np.sum(edges.outlet * np.abs(edges.flow))
         print('Q_in =', Q_in, 'Q_out =', Q_out)
+        if np.abs(Q_in - Q_out) > 1:
+            raise ValueError('Flow not matching!')
 
 
     def collect_data(self, sid: SimInputData, inc: Incidence, edges: Edges, \
@@ -258,26 +271,29 @@ class Data():
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
         slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
         edge_number  = np.array(self.slices[0])
+        plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
             plt.plot(slices, np.array(channeling) / edge_number, \
                     label = self.slice_times[i])
         plt.xlabel('x')
         plt.ylabel('channeling [%]')
-        plt.legend(loc='upper right')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.savefig(self.dirname + '/slices.png')
         plt.close()
+        plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
             plt.plot(slices, np.array(channeling) / np.array(self.slices[1]), \
                 label = self.slice_times[i])
         plt.xlabel('x')
         plt.ylabel('channeling [initial]')
-        plt.legend(loc='upper right')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.savefig(self.dirname + '/slices_norm.png')
         plt.close()
+        plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
             plt.plot(slices, channeling, label = self.slice_times[i])
         plt.xlabel('x')
         plt.ylabel('channeling [edge number]')
-        plt.legend(loc='upper right')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.savefig(self.dirname + '/slices_no_div.png')
         plt.close()

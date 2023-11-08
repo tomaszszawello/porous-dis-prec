@@ -43,15 +43,16 @@ def solve_merging(sid: SimInputData, inc: Incidence, graph: Graph, \
     # take coordinates of nonzero matrix elements - these are indices of edges
     # that we want to merge
     merged = []
+    merge_index = 0
     for edge_pair in list(zip(merge_edges.nonzero()[0], \
         merge_edges.nonzero()[1])):
         # we don't want to merge same edges twice
         if edge_pair[0] >= edge_pair[1]:
             #print ("SKIP")
             continue
-        # if edges.inlet[edge_pair[0]] == 1 or edges.inlet[edge_pair[1]] == 1:
-        #     print ("SKIP2")
-        #     continue
+        if edges.inlet[edge_pair[0]] or edges.inlet[edge_pair[1]] or edges.outlet[edge_pair[0]] or edges.outlet[edge_pair[1]]:
+            print ("SKIP2")
+            continue
         # if edges.diams[edge_pair[1]] == 0 or edges.diams[edge_pair[0]] == 0:
         #     continue
         
@@ -81,6 +82,8 @@ def solve_merging(sid: SimInputData, inc: Incidence, graph: Graph, \
         flag = 0
         for transverse_i in transverse_i_list:
             if transverse_i in merged:
+                flag = 1
+            if edges.inlet[transverse_i] or edges.outlet[transverse_i]:
                 flag = 1
         if flag:
             continue
@@ -243,6 +246,20 @@ def solve_merging(sid: SimInputData, inc: Incidence, graph: Graph, \
             for transverse_i in transverse_i_list:
                 for index in inc.inlet[transverse_i].nonzero()[1]:
                     inc.inlet[transverse_i, index] = 0
+
+
+        merge_index += 1
+        if merge_index > 50 and sid.old_t > 10:
+            #np.savetxt('merged_in.txt', edges.merged * edges.inlet)
+            #np.savetxt('merged_out.txt', edges.merged * edges.outlet)
+            np.savetxt('inc.txt', (inc.incidence != 0).sum(axis = 1))
+            np.savetxt('merge.txt', (inc.merge != 0).sum(axis = 1))
+            np.savetxt('middle.txt', (inc.middle != 0).sum(axis = 1))
+            raise ValueError("Too much merging")
+
+
+
+
 
 def merge():
     """ Restructure all matrices due to merging.

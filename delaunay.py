@@ -245,7 +245,7 @@ def build_delaunay_net(sid: SimInputData) -> Graph:
     for node, neigh in graph_copy.edges():
         l = graph[node][neigh]['l']
         if l > 3 * length_avr:
-           graph.remove_edge(node, neigh)
+            graph.remove_edge(node, neigh)
         elif node < sid.n and neigh < sid.n:
             graph.remove_edge(node, neigh)
         elif node >= sid.n * (sid.n - 1) and neigh >= sid.n * (sid.n - 1):

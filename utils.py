@@ -127,4 +127,5 @@ def make_dir(sid: SimInputData) -> None:
             sid.dirname = sid.dirname + "/" + str(i)
         else:
             i += 1
-    os.makedirs(sid.dirname)
+    if not os.path.isdir(sid.dirname):
+        os.makedirs(sid.dirname)

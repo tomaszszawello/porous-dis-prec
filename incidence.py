@@ -147,9 +147,13 @@ def create_matrices(sid: SimInputData, graph: Graph, inc: Incidence, \
         elif (n1 not in graph.out_nodes and n2 in graph.out_nodes) \
             or (n1 in graph.out_nodes and n2 not in graph.out_nodes):
             out_edges[i] = 1
-        elif (n1 in graph.in_nodes + graph.out_nodes and n2 \
+        if (n1 in graph.in_nodes + graph.out_nodes and n2 \
             in graph.in_nodes + graph.out_nodes):
             edges.boundary_list[i] = 1
+            if n1 in graph.in_nodes and n2 in graph.in_nodes:
+                in_edges[i] = 1
+            if n1 in graph.out_nodes and n2 in graph.out_nodes:
+                out_edges[i] = 1
     # in boundary matrix, we set identity to rows corresponding to inlet and
     # outlet nodes
     for node in np.concatenate((graph.in_nodes, graph.out_nodes)):

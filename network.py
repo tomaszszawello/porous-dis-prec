@@ -51,7 +51,9 @@ class Graph(nx.graph.Graph):
     """
     in_nodes: np.ndarray
     out_nodes: np.ndarray
-    zero_nodes: np.ndarray
+    in_vec: np.ndarray
+    out_vec: np.ndarray
+    zero_nodes = []
     boundary_edges = []
 
     def __init__(self):
@@ -126,6 +128,8 @@ def set_geometry(sid: SimInputData, graph: Graph) -> None:
     if sid.geo == 'rect':
         graph.in_nodes = np.arange(0, sid.n, 1)
         graph.out_nodes = np.arange(sid.n * (sid.n - 1), sid.nsq, 1)
+        graph.in_vec = np.concatenate((np.ones(sid.n), np.zeros(sid.n * (sid.n - 1))))
+        graph.out_vec = np.concatenate((np.zeros(sid.n * (sid.n - 1)), np.ones(sid.n)))
     # own geometry - inlet and outlet nodes are found based on the positions
     # given in config
     elif sid.geo == 'own':
@@ -140,7 +144,6 @@ def set_geometry(sid: SimInputData, graph: Graph) -> None:
         graph.in_nodes = np.array(in_nodes)
         graph.out_nodes = np.array(out_nodes)
     sid.Q_in = sid.qin * 2 * len(graph.in_nodes)
-    graph.zero_nodes = np.zeros(len(graph.nodes))
 
 class Edges():
     """ Contains all data connected with network edges.
@@ -322,14 +325,32 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
     edge_list = list(edge_list)
     sid.ne = len(edge_list)
 
-
-    diams = np.array(truncnorm.rvs(sid.dmin, sid.dmax, loc = sid.d0, \
-        scale = sid.sigma_d0, size = len(edge_list)))
+    if sid.noise == 'gaussian':
+        diams = np.array(truncnorm.rvs(sid.dmin, sid.dmax, loc = sid.d0, \
+            scale = sid.sigma_d0, size = len(edge_list)))
+    elif sid.noise == 'lognormal':
+        normal = np.random.randn(len(edge_list))
+        diams = np.exp(sid.d0 + sid.sigma_d0 * normal)
+        diams = np.clip(diams, 0, 50)
+    elif sid.noise == 'klognormal':
+        normal = np.random.randn(len(edge_list))
+        lognormal = np.exp(sid.d0 + sid.sigma_d0 * normal)
+        diams4 = lognormal * (lens / np.average(lens))
+        diams = diams4 ** 0.25
+    elif sid.noise == 'file':
+        diams_array = np.loadtxt(sid.noise_filename).T
+        diams = []
+        for n1, n2 in edge_list:
+            diams.append((diams_array[n1 // sid.n, n1 % sid.n] + \
+                diams_array[n2 // sid.n, n2 % sid.n]) / 2)
+        diams = np.array(diams)
+    else:
+        raise ValueError('Unknown diameters noise type.')
     lens = np.array(lens)
-
+ 
     merge_matrix_data = np.array(merge_matrix_data) / np.average(lens)
     inc.merge = spr.csr_matrix((merge_matrix_data, (merge_matrix_row, \
-        merge_matrix_col)), shape=(sid.ne, sid.ne))
+        merge_matrix_col)), shape=(sid.ne, sid.ne)) * sid.merge_length
     lens = lens / np.average(lens)
     flow = np.zeros(len(edge_list))
 

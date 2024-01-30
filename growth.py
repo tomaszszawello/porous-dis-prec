@@ -69,23 +69,30 @@ def update_diameters(sid: SimInputData, inc: Incidence, edges: Edges, \
     else:
         change = solve_d(sid, inc, edges, cb)
     breakthrough = False
-    diams_new = edges.diams + change
-    diams_new = diams_new * (diams_new >= sid.dmin) \
-        + sid.dmin * (diams_new < sid.dmin)
-    if np.max(edges.outlet * edges.diams) > sid.d_break:
-        breakthrough = True
-        print ('Network dissolved.')
     if sid.include_adt:
-        diams_rate = np.abs((diams_new - edges.diams) / edges.diams)
-        diams_rate = np.array(np.ma.fix_invalid(diams_rate, fill_value = 0))
-        dt_next = sid.growth_rate / sid.dt / np.max(diams_rate)
+        change_rate = change / edges.diams
+        change_rate = np.array(np.ma.fix_invalid(change_rate, fill_value = 0))
+        dt_next = sid.growth_rate / float(np.max(change_rate))
         if dt_next > sid.dt_max:
             dt_next = sid.dt_max
     else:
         dt_next = sid.dt
+    diams_new = edges.diams + change * dt_next
+    diams_new = diams_new * (diams_new >= sid.dmin) \
+        + sid.dmin * (diams_new < sid.dmin)
+    # if np.max(edges.outlet * edges.diams) > sid.d_break:
+    #     breakthrough = True
+    #     print ('Network dissolved.')
+    # if sid.include_adt:
+    #     diams_rate = np.abs((diams_new - edges.diams) / edges.diams)
+    #     diams_rate = np.array(np.ma.fix_invalid(diams_rate, fill_value = 0))
+    #     dt_next = sid.growth_rate / sid.dt / np.max(diams_rate)
+    #     if dt_next > sid.dt_max:
+    #         dt_next = sid.dt_max
+
     edges.diams = diams_new
-    if np.max(edges.diams / edges.diams_initial) > 300:
-        breakthrough = True
+    # if np.max(edges.diams / edges.diams_initial) > 300:
+    #     breakthrough = True
     return breakthrough, dt_next
 
 def solve_d(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray) \
@@ -123,7 +130,7 @@ def solve_d(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray) \
     cb_in = np.abs((spr.diags(edges.flow) @ inc.incidence > 0)) @ cb
     change = cb_in * np.abs(edges.flow) / (sid.Da * edges.lens \
         * edges.diams) * (1 - np.exp(-sid.Da / (1 + sid.G * edges.diams) \
-        * edges.diams * edges.lens / np.abs(edges.flow))) * sid.dt
+        * edges.diams * edges.lens / np.abs(edges.flow)))
     change = np.array(np.ma.fix_invalid(change, fill_value = 0))
     return change
 
@@ -180,5 +187,5 @@ def solve_dp(sid: SimInputData, inc: Incidence, edges: Edges, cb: np.ndarray, \
     shrink_cc = cc_in * np.abs(edges.flow)  / (sid.Da * edges.lens \
         * edges.diams * sid.Gamma) * (1 - np.exp(-sid.Da * sid.K / (1 + sid.G \
         * sid.K * edges.diams) * edges.diams * edges.lens / np.abs(edges.flow)))
-    change = (growth - shrink_cb - shrink_cc) * sid.dt
+    change = (growth - shrink_cb - shrink_cc)
     return change

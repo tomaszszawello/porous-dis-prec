@@ -51,6 +51,7 @@ class Data():
     t = []
     pressure = []
     order = []
+    participation_ratio = []
     cb_out = []
     cc_out = []
     delta_b = 0.
@@ -59,7 +60,6 @@ class Data():
     "channelization for slices through the whole system in a given time"
     slice_times: list = []
     "list of times of checking slice channelization"
-
 
     def __init__(self, sid: SimInputData):
         self.dirname = sid.dirname
@@ -76,7 +76,7 @@ class Data():
             try:
                 file = open(self.dirname + '/params.txt', 'a', \
                     encoding = "utf-8")
-                np.savetxt(file, np.array([self.t, self.pressure, self.cb_out, \
+                np.savetxt(file, np.array([self.t, self.pressure, self.participation_ratio, self.cb_out, \
                     self.cc_out], dtype = float).T)
                 file.close()
                 is_saved = True
@@ -153,6 +153,9 @@ class Data():
         self.pressure.append(np.max(p))
         self.order.append((sid.ne - np.sum(edges.flow ** 2) ** 2 \
             / np.sum(edges.flow ** 4)) / (sid.ne - 1))
+        self.participation_ratio.append(np.sum(edges.diams ** 2 \
+            * np.abs(edges.flow)) ** 2 / np.sum(edges.diams ** 2 \
+            * np.abs(edges.flow) ** 2) / np.sum(edges.diams ** 2))
         # calculate the difference between inflow and outflow of each substance
         delta = np.abs((np.abs(inc.incidence.T < 0) @ (np.abs(edges.flow) \
             * edges.inlet) - np.abs(inc.incidence.T > 0) @ (np.abs(edges.flow) \
@@ -180,10 +183,17 @@ class Data():
         spec = gridspec.GridSpec(ncols = n_data - 1, nrows = 1)
         for i_data in range(n_data - 1):
             plt.subplot(spec[i_data]).set_title(f'Data {i_data}')
-            plt.plot(t, data[:, i_data + 1] / data[0, i_data + 1])
+            #plt.plot(t, data[:, i_data + 1] / data[0, i_data + 1])
+            plt.plot(t, data[:, i_data + 1])
             plt.yscale('log')
             plt.xlabel('simulation time')
         plt.savefig(self.dirname + '/params.png')
+        plt.close()
+        plt.figure(figsize = (10, 10))
+        plt.title('Participation ratio')
+        plt.plot(t, data[:, 2])
+        plt.xlabel('simulation time')
+        plt.savefig(self.dirname + '/participation_ratio.png')
         plt.close()
 
     def check_channelization(self, graph: Graph, inc: Incidence, edges: Edges, \
@@ -220,7 +230,7 @@ class Data():
             percentage of edges taking half of the flow in the slice
         """
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
-        np.savetxt('x.txt', pos_x)
+        #np.savetxt('x.txt', pos_x)
         # find edges crossing the given slice and their orientation - if edge
         # crosses the slice from left to right, it is marked with 1, if from
         # right to left - -1, if it doesn't cross - 0
@@ -296,4 +306,36 @@ class Data():
         plt.ylabel('channeling [edge number]')
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.savefig(self.dirname + '/slices_no_div.png')
+        plt.close()
+
+    def plot_slice_channelization_v2(self, sid: SimInputData, graph: Graph) -> None:
+        """ Plots slice data from text file.
+
+        This function loads the data from text file slices.txt and plots them
+        to files slices.png, slices_no_div.png, slices_norm.png.
+        """
+        pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
+        slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
+        edge_number  = np.array(self.slices[0])
+        i_start = 5
+        i_division = sid.tmax // sid.track_every // 10
+        plt.figure(figsize = (10, 10))
+        for i, channeling in enumerate(self.slices[1:]):
+            if i < i_start:
+                plt.plot(slices, np.array(channeling) / edge_number, \
+                        label = self.slice_times[i])
+        plt.xlabel('x')
+        plt.ylabel('channeling [%]')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig(self.dirname + '/slices_start.png')
+        plt.close()
+        plt.figure(figsize = (10, 10))
+        for i, channeling in enumerate(self.slices[1:]):
+            if i % i_division == 0:
+                plt.plot(slices, np.array(channeling) / edge_number, \
+                        label = self.slice_times[i])
+        plt.xlabel('x')
+        plt.ylabel('channeling [%]')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig(self.dirname + '/slices.png')
         plt.close()

@@ -101,6 +101,8 @@ def solve_flow(sid: SimInputData, inc: Incidence, graph: Graph, edges: Edges, \
             diag[i] = 1
     # replace diagonal
     p_matrix.setdiag(diag)
+    #np.savetxt(f'd{sid.old_iters}.txt', edges.diams)
+    #np.savetxt(f'p{sid.old_iters}.txt', p_matrix.toarray())
     # solve matrix @ pressure = pressure_b
     pressure = solve_equation(p_matrix, pressure_b)
     # normalize pressure in inlet nodes to match condition for constant inlet
@@ -110,4 +112,8 @@ def solve_flow(sid: SimInputData, inc: Incidence, graph: Graph, edges: Edges, \
     pressure *= sid.Q_in / q_in
     # update flow
     edges.flow = edges.diams ** 4 / edges.lens * (inc.incidence @ pressure)
+    p_continuity = p_matrix @ pressure * (1 - graph.in_vec - graph.out_vec)
+    if np.sum(p_continuity) > 1e-3:
+        np.savetxt('p_continuity.txt', p_continuity)
+        raise ValueError("continuity")
     return pressure

@@ -86,4 +86,7 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
         make_dir(sid)
         data = Data(sid)
         Sv.save_config(sid)
+        #import numpy as np
+        #graph.in_vec = np.concatenate((np.ones(sid.n), np.zeros(sid.n * (sid.n - 1))))
+        #graph.out_vec = np.concatenate((np.zeros(sid.n * (sid.n - 1)), np.ones(sid.n)))
     return sid, inc, graph, edges, data

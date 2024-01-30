@@ -17,18 +17,18 @@ class SimInputData:
     ''' Configuration class for the whole simulation.
     '''
     # GENERAL
-    n: int = 100
+    n: int = 50
     "network size"
     iters: int = 100000
     "maximum number of iterations"
-    tmax: float = 5000.
+    tmax: float = 10000.
     "maximum time"
-    plot_every: int = 100
+    plot_every: int = tmax // 10
     "frequency of plotting the results"
-    track_every: int = 100000
+    track_every: int = tmax // 10
 
     # DISSOLUTION & PRECIPITATION
-    Da_eff: float = 1
+    Da_eff: float = 10
     "effective Damkohler number"
     G: float = 1
     "diffusion to reaction ratio"
@@ -38,7 +38,7 @@ class SimInputData:
     "precipitation to dissolution reaction rate"
     Gamma: float = 2.
     "precipitation to dissolution acid capacity number"
-    merge_length: float = 100.
+    merge_length: float = 10.
     "diameter scale to length scale ratio for merging"
 
     # INCLUDE
@@ -65,9 +65,13 @@ class SimInputData:
     "maximum timestep (for adaptive)"
 
     # DIAMETERS
+    noise: str = 'gaussian' # 'gaussian', 'lognormal', 'klognormal', 'file'
+    "type of noise in diameters distribution"
+    noise_filename: str = 'n50lam10r1.dat'
+    "name of file with initial diameters if noise == file"
     d0: float = 1.
     "initial dimensionless mean diameter"
-    sigma_d0: float = 0.5
+    sigma_d0: float = 1
     "initial diameter standard deviation"
     dmin: float = 0.01
     "minimum diameter"
@@ -79,18 +83,19 @@ class SimInputData:
     # DRAWING
     figsize: float = 10.
     "figure size"
-    qdrawconst: float = 30.
+    qdrawconst: float = 1
     "constant for improving flow drawing"
-    ddrawconst: float = 1 / merge_length
+    ddrawconst: float = 2 / (n / 100) / merge_length
     "constant for improving diameter drawing"
 
     # INITIALIZATION
-    load: int = 2
+    load: int = 0
     ("type of loading: 0 - build new network based on config and start new \
      simulation, 1 - load previous network from load_name and continue \
      simulation, 2 - load template network from load_name and start new \
      simulation")
-    load_name: str = 'rect100/G1.00Daeff1.00/39'
+    #load_name: str = 'klognormal100_1'
+    load_name: str = 'G1.00Daeff1.00/53'
     "name of loaded network"
 
     # GEOMETRY
@@ -119,6 +124,8 @@ class SimInputData:
     "total time of simulation"
     Q_in = 1.
     "total inlet flow (updated later)"
-    dirname: str = geo + str(n) + '/' + f'G{G:.2f}Daeff{Da_eff:.2f}'
+    #dirname: str = geo + str(n) + '/' + f'G{G:.2f}Daeff{Da_eff:.2f}'
+    #dirname: str = 'lam10r1/' + f't{tmax:03}/' + f'sigma{sigma_d0:.2f}G{G:.2f}Daeff{Da_eff:.2f}'
+    dirname: str = f'G{G:.2f}Daeff{Da_eff:.2f}'
     "directory of simulation"
     

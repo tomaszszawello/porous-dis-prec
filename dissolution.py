@@ -90,8 +90,8 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
         vector of substance B concentration in nodes
     """
     # find incidence for cb (only upstream flow matters)
-    cb_inc = np.abs(inc.incidence.T @ (spr.diags(edges.flow) \
-        @ inc.incidence > 0))
+    cb_inc = 1 * (inc.incidence.T @ (spr.diags(edges.flow) \
+        @ inc.incidence > 0) != 0)
     # find vector with non-diagonal coefficients
     qc = edges.flow * np.exp(-np.abs(sid.Da / (1 + sid.G * edges.diams) \
         * edges.diams * edges.lens / edges.flow))
@@ -99,23 +99,26 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     qc_matrix = np.abs(inc.incidence.T @ spr.diags(qc) @ inc.incidence)
     cb_matrix = cb_inc.multiply(qc_matrix)
     # find diagonal coefficients (inlet flow for each node)
-    diag = -np.abs(inc.incidence.T) @ np.abs(edges.flow) / 2
-    # set diagonal for input nodes to 1
-    for node in graph.in_nodes:
-        diag[node] = 1
-    # multiply diagonal for output nodes (they have no outlet, so inlet flow
-    # is equal to whole flow); also fix for nodes which are connected only to
-    # other out_nodes - without it we get a singular matrix (whole row of
-    # zeros)
-    for node in graph.out_nodes:
-        if diag[node] != 0:
-            diag[node] *= 2
-        else:
-            diag[node] = 1
-    # fix for nodes with no connections
-    for i, node in enumerate(diag):
-        if node == 0:
-            diag[i] = 1
+    diag = np.array(-np.abs(inc.incidence.T @ spr.diags(edges.flow) @ inc.incidence).sum(axis = 1).reshape((1, sid.nsq)) / 2)[0] #-np.abs(inc.incidence.T) @ np.abs(edges.flow) / 2
+    
+    diag = graph.in_vec + 1 * (diag == 0) + diag * (1 + graph.out_vec - graph.in_vec)
+    
+    # # set diagonal for input nodes to 1
+    # for node in graph.in_nodes:
+    #     diag[node] = 1
+    # # multiply diagonal for output nodes (they have no outlet, so inlet flow
+    # # is equal to whole flow); also fix for nodes which are connected only to
+    # # other out_nodes - without it we get a singular matrix (whole row of
+    # # zeros)
+    # for node in graph.out_nodes:
+    #     if diag[node] != 0:
+    #         diag[node] *= 2
+    #     else:
+    #         diag[node] = 1
+    # # fix for nodes with no connections
+    # for i, node in enumerate(diag):
+    #     if node == 0:
+    #         diag[i] = 1
     # replace diagonal
     cb_matrix.setdiag(diag)
     cb = solve_equation(cb_matrix, cb_b)

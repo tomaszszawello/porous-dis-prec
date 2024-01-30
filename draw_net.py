@@ -161,9 +161,15 @@ def draw(sid: SimInputData, graph: Graph, edges: Edges, \
     for node in graph.out_nodes:
         x_out.append(pos[node][0])
         y_out.append(pos[node][1])
-    #plt.scatter(x_in, y_in, s = 60, facecolors = 'white', edgecolors = 'black')
-    #plt.scatter(x_out, y_out, s = 60, facecolors = 'black', \
-    #    edgecolors = 'white')
+    x_zero, y_zero = [], []
+    for node in graph.zero_nodes:
+        x_zero.append(pos[node][0])
+        y_zero.append(pos[node][1])
+    #print (x_zero, y_zero)
+    plt.scatter(x_in, y_in, s = 30, facecolors = 'white', edgecolors = 'black')
+    plt.scatter(x_out, y_out, s = 30, facecolors = 'black', \
+        edgecolors = 'white')
+    
     if data == 'd':
         qs1 = (1 - edges.boundary_list) * edges.diams \
             * (edges.diams < edges.diams_initial / 2)
@@ -176,7 +182,153 @@ def draw(sid: SimInputData, graph: Graph, edges: Edges, \
     elif data == 'q':
         qs = (1 - edges.boundary_list) * np.abs(edges.flow)
         nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
-            width = sid.ddrawconst * np.array(qs))
+            width = sid.qdrawconst * np.array(qs))
+    #nx.draw_networkx_edge_labels(graph, pos, edge_labels=dict(zip(edges.edge_list, np.arange(0, len(edges.edge_list)))), font_size = 5)
+    #plt.scatter(x_zero, y_zero, s = 60, facecolors = 'blue', edgecolors = 'black')
+    # save file in the directory
+    plt.axis('off')
+    plt.savefig(sid.dirname + "/" + name)
+    plt.close()
+
+
+def draw_nodes(sid: SimInputData, graph: Graph, edges: Edges, cb, \
+    name: str, data: str) -> None:
+    """ Draw the network with diameters/flow as edge width.
+
+    This function plots the network with one of parameters as edge width, as
+    well as some histograms of key data.
+
+    Parameters
+    -------
+    sid : SimInputData
+        all config parameters of the simulation
+        figsize - size of the plot (~resolution)
+        ddrawconst - scaling parameter to improve visibility when drawing
+        diameters
+        qdrawconst - scaling parameter to improve visibility when drawing flow
+        dirname - directory of the simulation
+
+    graph : Graph class object
+        network and all its properties
+        in_nodes - list of inlet nodes
+        out_nodes - list of outlet nodes
+
+    edges : Edges class object
+        all edges in network and their parameters
+        diams - diameters of edges
+        diams_initial - initial diameters of edges
+        flow - flow in edges
+        boundary_list - edges assuring PBC (to be excluded from drawing)
+
+    name : str
+        name of the saved file with the plot
+
+    data : str
+        parameter taken as edge width (diameter or flow)
+    """
+    # draw first panel for the network
+    plt.axis('equal')
+    
+    plt.figure(figsize=(sid.figsize, sid.figsize))
+    pos = nx.get_node_attributes(graph, 'pos')
+    # draw inlet and outlet nodes
+    x_in, y_in = [], []
+    for node in graph.in_nodes:
+        x_in.append(pos[node][0])
+        y_in.append(pos[node][1])
+    x_out, y_out = [], []
+    for node in graph.out_nodes:
+        x_out.append(pos[node][0])
+        y_out.append(pos[node][1])
+    x_zero, y_zero = [], []
+    for node in graph.zero_nodes:
+        x_zero.append(pos[node][0])
+        y_zero.append(pos[node][1])
+    #print (x_zero, y_zero)
+    nx.draw_networkx_nodes(graph, pos, node_color = cb * (cb >= 1))
+    nx.draw_networkx_labels(graph, pos, labels=dict(zip(graph.nodes(), graph.nodes())), font_size=5)
+    plt.scatter(x_in, y_in, s = 30, facecolors = 'white', edgecolors = 'black')
+    plt.scatter(x_out, y_out, s = 30, facecolors = 'black', \
+        edgecolors = 'white')
+    plt.scatter(x_zero, y_zero, s = 60, facecolors = 'blue', edgecolors = 'black')
+    # save file in the directory
+    plt.axis('off')
+    plt.savefig(sid.dirname + "/" + name)
+    plt.close()
+    
+def draw_labels(sid: SimInputData, graph: Graph, edges: Edges, \
+    name: str, data: str) -> None:
+    """ Draw the network with diameters/flow as edge width.
+
+    This function plots the network with one of parameters as edge width, as
+    well as some histograms of key data.
+
+    Parameters
+    -------
+    sid : SimInputData
+        all config parameters of the simulation
+        figsize - size of the plot (~resolution)
+        ddrawconst - scaling parameter to improve visibility when drawing
+        diameters
+        qdrawconst - scaling parameter to improve visibility when drawing flow
+        dirname - directory of the simulation
+
+    graph : Graph class object
+        network and all its properties
+        in_nodes - list of inlet nodes
+        out_nodes - list of outlet nodes
+
+    edges : Edges class object
+        all edges in network and their parameters
+        diams - diameters of edges
+        diams_initial - initial diameters of edges
+        flow - flow in edges
+        boundary_list - edges assuring PBC (to be excluded from drawing)
+
+    name : str
+        name of the saved file with the plot
+
+    data : str
+        parameter taken as edge width (diameter or flow)
+    """
+    # draw first panel for the network
+    plt.axis('equal')
+    
+    plt.figure(figsize=(sid.figsize, sid.figsize))
+    pos = nx.get_node_attributes(graph, 'pos')
+    # draw inlet and outlet nodes
+    x_in, y_in = [], []
+    for node in graph.in_nodes:
+        x_in.append(pos[node][0])
+        y_in.append(pos[node][1])
+    x_out, y_out = [], []
+    for node in graph.out_nodes:
+        x_out.append(pos[node][0])
+        y_out.append(pos[node][1])
+    x_zero, y_zero = [], []
+    for node in graph.zero_nodes:
+        x_zero.append(pos[node][0])
+        y_zero.append(pos[node][1])
+    #print (x_zero, y_zero)
+    plt.scatter(x_in, y_in, s = 30, facecolors = 'white', edgecolors = 'black')
+    plt.scatter(x_out, y_out, s = 30, facecolors = 'black', \
+        edgecolors = 'white')
+    
+    if data == 'd':
+        qs1 = (1 - edges.boundary_list) * edges.diams \
+            * (edges.diams < edges.diams_initial / 2)
+        qs2 = (1 - edges.boundary_list) * edges.diams \
+            * (edges.diams >= edges.diams_initial / 2)
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'r', \
+            width = sid.ddrawconst * np.array(qs1))
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
+            width = sid.ddrawconst * np.array(qs2))
+    elif data == 'q':
+        qs = (1 - edges.boundary_list) * np.abs(edges.flow)
+        nx.draw_networkx_edges(graph, pos, edges.edge_list, edge_color = 'k', \
+            width = sid.qdrawconst * np.array(qs))
+    nx.draw_networkx_edge_labels(graph, pos, edge_labels=dict(zip(edges.edge_list, np.arange(0, len(edges.edge_list)))), font_size = 5)
+    #plt.scatter(x_zero, y_zero, s = 60, facecolors = 'blue', edgecolors = 'black')
     # save file in the directory
     plt.axis('off')
     plt.savefig(sid.dirname + "/" + name)

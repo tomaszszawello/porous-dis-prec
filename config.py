@@ -17,20 +17,23 @@ class SimInputData:
     ''' Configuration class for the whole simulation.
     '''
     # GENERAL
-    n: int = 50
+    n: int = 10
     "network size"
-    iters: int = 100000
+    iters: int = 1000000
     "maximum number of iterations"
-    tmax: float = 10000.
+    tmax: float = 1000.
     "maximum time"
-    plot_every: int = tmax // 10
+    dissolved_v_max: float = 5#2e3 * n
+    "maximum dissolved pore volume (may be size dependent?)"
+    plot_every: int = dissolved_v_max / 10 #tmax // 20
     "frequency of plotting the results"
-    track_every: int = tmax // 10
+    track_every: int = dissolved_v_max / 10 #tmax // 20
+
 
     # DISSOLUTION & PRECIPITATION
-    Da_eff: float = 10
+    Da_eff: float = 0.05
     "effective Damkohler number"
-    G: float = 1
+    G: float = 5.
     "diffusion to reaction ratio"
     Da: float = Da_eff * (1 + G)
     "Damkohler number"
@@ -46,6 +49,8 @@ class SimInputData:
     "include adaptive timestep"
     include_cc: bool = False
     "include precipitation"
+    include_merging: bool = True
+    "include pore merging"
 
     # INITIAL CONDITIONS
     qin: float = 1.
@@ -58,22 +63,22 @@ class SimInputData:
     # TIME
     dt: float = 0.01
     "initial timestep (if no adaptive timestep, timestep for whole simulation)"
-    growth_rate: float = 0.02
+    growth_rate: float = 0.01
     ("maximum percentage growth of an edges (used for finding adaptive \
      timestep)")
     dt_max: float = 5.
     "maximum timestep (for adaptive)"
 
     # DIAMETERS
-    noise: str = 'gaussian' # 'gaussian', 'lognormal', 'klognormal', 'file'
+    noise: str = 'file_lognormal_k' # 'gaussian', 'lognormal', 'klognormal', 'file_lognormal_d', 'file_lognormal_k'
     "type of noise in diameters distribution"
-    noise_filename: str = 'n50lam10r1.dat'
-    "name of file with initial diameters if noise == file"
+    noise_filename: str = 'n100lam10rgh10.dat'
+    "name of file with initial diameters if noise == file_"
     d0: float = 1.
     "initial dimensionless mean diameter"
-    sigma_d0: float = 1
+    sigma_d0: float = 0.1
     "initial diameter standard deviation"
-    dmin: float = 0.01
+    dmin: float = 0
     "minimum diameter"
     dmax: float = 1000.
     "maximum diameter"
@@ -94,8 +99,8 @@ class SimInputData:
      simulation, 1 - load previous network from load_name and continue \
      simulation, 2 - load template network from load_name and start new \
      simulation")
-    #load_name: str = 'klognormal100_1'
-    load_name: str = 'G1.00Daeff1.00/53'
+    load_name: str = 'grl/G5.00Daeff0.05/7'
+    # load_name: str = 'merging2/n100lam10r1.dat/G5.00Daeff0.10/0'
     "name of loaded network"
 
     # GEOMETRY
@@ -126,6 +131,9 @@ class SimInputData:
     "total inlet flow (updated later)"
     #dirname: str = geo + str(n) + '/' + f'G{G:.2f}Daeff{Da_eff:.2f}'
     #dirname: str = 'lam10r1/' + f't{tmax:03}/' + f'sigma{sigma_d0:.2f}G{G:.2f}Daeff{Da_eff:.2f}'
-    dirname: str = f'G{G:.2f}Daeff{Da_eff:.2f}'
+    #dirname: str = f'merging2/{noise_filename}/G{G:.2f}Daeff{Da_eff:.2f}'
+    dirname: str = f'grl/G{G:.2f}Daeff{Da_eff:.2f}'
     "directory of simulation"
+    initial_merging: int = 5
+    "number of initial merging iterations"
     

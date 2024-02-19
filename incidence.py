@@ -54,6 +54,8 @@ class Incidence():
     "connections of edges with inlet nodes (ne x nsq)"
     merge: spr.csr_matrix = spr.csr_matrix(0)
     "threshold values for edge merging (ne x ne)"
+    plot: spr.csr_matrix = spr.csr_matrix(0)
+    "matrix for plotting diameters with merging (ne x ne)"
 
 
 def create_matrices(sid: SimInputData, graph: Graph, inc: Incidence, \
@@ -174,6 +176,7 @@ def create_matrices(sid: SimInputData, graph: Graph, inc: Incidence, \
         shape = (sid.nsq, sid.nsq))
     inc.inlet = spr.csr_matrix((data_in, (row_in, col_in)), \
         shape = (sid.ne, sid.nsq))
+    inc.plot = spr.csr_matrix(spr.diags(np.ones(sid.ne)))
     # we calculate how many triangles each edge has as neighbors (1 or 2)
     edges.inlet = in_edges
     edges.outlet = out_edges

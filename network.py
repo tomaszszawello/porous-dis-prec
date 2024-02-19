@@ -59,7 +59,7 @@ class Graph(nx.graph.Graph):
     def __init__(self):
         nx.graph.Graph.__init__(self)
 
-    def update_network(self, edges: Edges) -> None:
+    def update_network(self, inc:Incidence, edges: Edges) -> None:
         """ Update diameters and flow in the graph.
 
         Parameters
@@ -71,9 +71,13 @@ class Graph(nx.graph.Graph):
             diams - diameters of edges
             flow - flow in edges
         """
-        nx.set_edge_attributes(self, dict(zip(edges.edge_list, edges.diams)), \
+        merged_number = inc.plot.sum(axis = 0)
+        np.savetxt('merged_number.txt', merged_number)
+        diams = inc.plot @ edges.diams / merged_number
+        flow = inc.plot @ edges.flow / merged_number
+        nx.set_edge_attributes(self, dict(zip(edges.edge_list, diams)), \
             'd')
-        nx.set_edge_attributes(self, dict(zip(edges.edge_list, edges.flow)), \
+        nx.set_edge_attributes(self, dict(zip(edges.edge_list, flow)), \
             'q')
 
 def find_node(graph: Graph, pos: tuple[float, float]) -> int:
@@ -143,6 +147,8 @@ def set_geometry(sid: SimInputData, graph: Graph) -> None:
             out_nodes.append(find_node(pos))
         graph.in_nodes = np.array(in_nodes)
         graph.out_nodes = np.array(out_nodes)
+    else:
+        raise ValueError(f"Unknown geometry type: {sid.geo}")
     sid.Q_in = sid.qin * 2 * len(graph.in_nodes)
 
 class Edges():
@@ -204,6 +210,8 @@ class Edges():
      them for drawing, to make the draw legible")
     merged: np.ndarray
     "edges which were merged and should now be omitted"
+    transversed: np.ndarray
+    "edges which were merged as transverse"
     def __init__(self, diams, lens, flow, edge_list, boundary_list):
         self.diams = diams
         self.lens = lens
@@ -212,6 +220,7 @@ class Edges():
         self.boundary_list = boundary_list
         self.diams_initial = diams
         self.merged = np.zeros_like(diams)
+        self.transversed = np.zeros_like(diams)
 
 def build_delaunay_net(sid: SimInputData, inc: Incidence) \
     -> tuple(Graph, Edges):
@@ -230,32 +239,36 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
     graph : Graph class object
         network and all its properties
     """
-    # points = np.random.uniform(0, sid.n, (sid.nsq, 2))
-    points_left = np.random.uniform(0, sid.n, (sid.n, 2)) * np.array([1, 0])
-    points_right = np.random.uniform(0, sid.n, (sid.n, 2)) * np.array([1, 0]) + np.array([0, sid.n])
-    points_bottom = np.random.uniform(0.5, sid.n - 0.5, (sid.n, 2)) * np.array([0, 1])
-    points_top = np.random.uniform(0.5, sid.n - 0.5, (sid.n, 2)) * np.array([0, 1]) + np.array([sid.n, 0])
-    points_middle = np.random.uniform(0.5, sid.n - 0.5, (sid.n * (sid.n - 4), 2))
-    points = np.concatenate((points_middle, points_left, points_right, points_bottom, points_top))
-    points = np.array(sorted(points, key = lambda elem: (elem[0], elem[1])))
-    # points = np.array(sorted(points, key = lambda elem: \
-    #     (elem[0] // 1, elem[1])))
-    # check if you get better boundaries with the commented line
+    # points_left = np.random.uniform(0, sid.n, (sid.n, 2)) * np.array([1, 0])
+    # points_right = np.random.uniform(0, sid.n, (sid.n, 2)) * np.array([1, 0]) + np.array([0, sid.n])
+    # points_middle = np.random.uniform(0.5, sid.n - 0.5, (sid.n * (sid.n - 2), 2)) * np.array([1, 0]) + np.random.uniform(0, sid.n, (sid.n * (sid.n - 2), 2)) * np.array([0, 1])
+    # points = np.concatenate((points_middle, points_left, points_right))
+    # points = np.array(sorted(points, key = lambda elem: (elem[0], elem[1])))
 
-    points_above = points.copy() + np.array([0, sid.n])
-    points_below = points.copy() + np.array([0, -sid.n])
-    points_right =  points.copy() + np.array([sid.n, 0])
-    points_left = points.copy() + np.array([-sid.n, 0])
+    points_left = np.linspace([0, 0], [0, sid.n - 1], sid.n) + np.array([0, 0.5])
+    points_right = np.linspace([0, 0], [0, sid.n - 1], sid.n) + np.array([sid.n, 0.5])
+    points_top = np.random.uniform(0.5, sid.n - 0.5, (sid.n, 2)) * np.array([1, 0]) + np.random.uniform(0, 1, (sid.n, 2)) * np.array([0, 1])
+    points_bottom = np.random.uniform(0.5, sid.n - 0.5, (sid.n, 2)) * np.array([1, 0]) + np.array([0, sid.n]) - np.random.uniform(0, 1, (sid.n, 2)) * np.array([0, 1])
+    points_middle = np.random.uniform(0.5, sid.n - 0.5, \
+        (sid.n * (sid.n - 4), 2)) * np.array([1, 0]) + np.random.uniform(1, \
+        sid.n - 1, (sid.n * (sid.n - 4), 2)) * np.array([0, 1])
+    points = np.concatenate((points_middle, points_left, points_right, points_top, points_bottom))
+    points = np.array(sorted(points, key = lambda elem: (elem[0], elem[1])))
+
+    points_above_pbc = points.copy() + np.array([0, sid.n])
+    points_below_pbc = points.copy() + np.array([0, -sid.n])
+    points_right_pbc =  points.copy() + np.array([sid.n, 0])
+    points_left_pbc = points.copy() + np.array([-sid.n, 0])
 
     if sid.periodic == 'none':
         pos = points
     elif sid.periodic == 'top': 
-        pos = np.concatenate([points, points_above, points_below])
+        pos = np.concatenate([points, points_above_pbc, points_below_pbc])
     elif sid.periodic == 'side':
-        pos = np.concatenate([points, points_right, points_left])
+        pos = np.concatenate([points, points_right_pbc, points_left_pbc])
     elif sid.periodic == 'all':
-        pos = np.concatenate([points, points_above, points_below, \
-            points_right, points_left])
+        pos = np.concatenate([points, points_above_pbc, points_below_pbc, \
+            points_right_pbc, points_left_pbc])
     else:
         raise ValueError("Unknown boundary condition type.")
 
@@ -264,6 +277,7 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
     edge_list = dict()
     boundary_edges = []
     lens = []
+    angles = []
     edge_index = 0
 
     merge_matrix_row = []
@@ -301,6 +315,8 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
                 edge_list[(node1, node2)] = edge_index
                 cur_edge_index = edge_index
                 lens.append(lens_tr[i])
+                # angle = np.abs(np.array(pos[node2]) - np.array(pos[node1]))
+                # angles.append(angle[1] - angle[0] > 0)
                 edge_index += 1
                 if bound and i > 0:
                     boundary_edges.append(1)
@@ -318,7 +334,12 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
         merge_matrix_col.extend(np.roll(edge_index_list, 2))
         for index in list(np.roll(edge_index_list, 2)) \
             + list(np.roll(edge_index_list, 1)):
+            # if angles[index]:
+            #     merge_matrix_data.append(lens[index] / 2)
+            # else:
+            #     merge_matrix_data.append(0)
             merge_matrix_data.append(lens[index] / 2)
+
 
     boundary_edges = np.array(boundary_edges)
 
@@ -337,15 +358,22 @@ def build_delaunay_net(sid: SimInputData, inc: Incidence) \
         lognormal = np.exp(sid.d0 + sid.sigma_d0 * normal)
         diams4 = lognormal * (lens / np.average(lens))
         diams = diams4 ** 0.25
-    elif sid.noise == 'file':
+    elif sid.noise == 'file_lognormal_d':
         diams_array = np.loadtxt(sid.noise_filename).T
         diams = []
         for n1, n2 in edge_list:
             diams.append((diams_array[n1 // sid.n, n1 % sid.n] + \
                 diams_array[n2 // sid.n, n2 % sid.n]) / 2)
         diams = np.array(diams)
+    elif sid.noise == 'file_lognormal_k':
+        k_array = np.loadtxt(sid.noise_filename).T
+        k = []
+        for n1, n2 in edge_list:
+            k.append((k_array[n1 // sid.n, n1 % sid.n] + \
+                k_array[n2 // sid.n, n2 % sid.n]) / 2)
+        diams = (np.array(k) * (np.array(lens) / np.average(lens))) ** 0.25
     else:
-        raise ValueError('Unknown diameters noise type.')
+        raise ValueError(f'Unknown noise type: {sid.noise}')
     lens = np.array(lens)
  
     merge_matrix_data = np.array(merge_matrix_data) / np.average(lens)

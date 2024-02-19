@@ -52,17 +52,22 @@ class Data():
     pressure = []
     order = []
     participation_ratio = []
+    participation_ratio_nom = []
+    participation_ratio_denom = []
     cb_out = []
     cc_out = []
     delta_b = 0.
     delta_c = 0.
+    dissolved_v = 0.
+    dissolved_v_list = []
     slices: list = []
     "channelization for slices through the whole system in a given time"
     slice_times: list = []
     "list of times of checking slice channelization"
 
-    def __init__(self, sid: SimInputData):
+    def __init__(self, sid: SimInputData, edges: Edges):
         self.dirname = sid.dirname
+        self.vol_init = np.sum(edges.diams ** 2 * edges.lens)
 
     def save_data(self) -> None:
         """ Save data to text file.
@@ -74,7 +79,7 @@ class Data():
         is_saved = False
         while not is_saved: # prevents problems with opening text file
             try:
-                file = open(self.dirname + '/params.txt', 'a', \
+                file = open(self.dirname + '/params.txt', 'w', \
                     encoding = "utf-8")
                 np.savetxt(file, np.array([self.t, self.pressure, self.participation_ratio, self.cb_out, \
                     self.cc_out], dtype = float).T)
@@ -86,13 +91,19 @@ class Data():
         is_saved = False
         while not is_saved: # prevents problems with opening text file
             try:
-                file = open(self.dirname + '/slices.txt', 'a', \
+                file = open(self.dirname + '/slices.txt', 'w', \
                     encoding = "utf-8")
                 np.savetxt(file, self.slices)
                 file.close()
                 is_saved = True
             except PermissionError:
                 pass
+
+    def load_data(self) -> None:
+        data = np.loadtxt(self.dirname + '/params.txt').T
+        self.t, self.pressure, self.participation_ratio, self.cb_out, \
+            self.cc_out = list(data[0]), list(data[1]), list(data[2]), list(data[3]), list(data[4])
+        self.slices = list(np.loadtxt(self.dirname + '/slices.txt'))
 
     def check_data(self, edges: Edges) -> None:
         """ Check the key physical parameters of the simulation.
@@ -113,6 +124,9 @@ class Data():
         print('Q_in =', Q_in, 'Q_out =', Q_out)
         if np.abs(Q_in - Q_out) > 1:
             raise ValueError('Flow not matching!')
+        # delta = np.abs((np.abs(inc.incidence.T < 0) @ (np.abs(edges.flow) \
+        #     * edges.inlet) - np.abs(inc.incidence.T > 0) @ (np.abs(edges.flow) \
+        #     * edges.outlet)) @ cb * sid.dt)
 
 
     def collect_data(self, sid: SimInputData, inc: Incidence, edges: Edges, \
@@ -150,12 +164,16 @@ class Data():
             vector of current substance C concentration
         """
         self.t.append(sid.old_t)
+        
         self.pressure.append(np.max(p))
         self.order.append((sid.ne - np.sum(edges.flow ** 2) ** 2 \
             / np.sum(edges.flow ** 4)) / (sid.ne - 1))
-        self.participation_ratio.append(np.sum(edges.diams ** 2 \
-            * np.abs(edges.flow)) ** 2 / np.sum(edges.diams ** 2 \
-            * np.abs(edges.flow) ** 2) / np.sum(edges.diams ** 2))
+        pi = np.sum(edges.diams ** 2 * np.abs(edges.flow)) ** 2 / np.sum(edges.diams ** 2 \
+            * np.abs(edges.flow) ** 2) / sid.nsq
+        pi_prime = np.sum(edges.diams ** 2) / sid.nsq
+        self.participation_ratio_nom.append(pi)
+        self.participation_ratio_denom.append(pi_prime)
+        self.participation_ratio.append(pi / pi_prime)
         # calculate the difference between inflow and outflow of each substance
         delta = np.abs((np.abs(inc.incidence.T < 0) @ (np.abs(edges.flow) \
             * edges.inlet) - np.abs(inc.incidence.T > 0) @ (np.abs(edges.flow) \
@@ -167,6 +185,8 @@ class Data():
             * edges.outlet)) @ cc * sid.dt)
         self.delta_c += delta
         self.cc_out.append(self.delta_c)
+        self.dissolved_v = (np.sum(edges.diams ** 2 * edges.lens) - self.vol_init) / self.vol_init
+        self.dissolved_v_list.append(self.dissolved_v)
 
     def plot_data(self) -> None:
         """ Plot data from text file.
@@ -189,12 +209,12 @@ class Data():
             plt.xlabel('simulation time')
         plt.savefig(self.dirname + '/params.png')
         plt.close()
-        plt.figure(figsize = (10, 10))
-        plt.title('Participation ratio')
-        plt.plot(t, data[:, 2])
-        plt.xlabel('simulation time')
-        plt.savefig(self.dirname + '/participation_ratio.png')
-        plt.close()
+        # plt.figure(figsize = (10, 10))
+        # plt.title('Participation ratio')
+        # plt.plot(t, data[:, 2])
+        # plt.xlabel('simulation time')
+        # plt.savefig(self.dirname + '/participation_ratio.png')
+        # plt.close()
 
     def check_channelization(self, graph: Graph, inc: Incidence, edges: Edges, \
         slice_x: float) -> tuple[int, float]:
@@ -254,7 +274,7 @@ class Data():
     def check_init_slice_channelization(self, graph: Graph, inc: Incidence, \
         edges: Edges) -> None:
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
-        slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
+        slices = np.linspace(np.min(pos_x), np.max(pos_x), 102)[1:-1]
         channels_tab = []
         for x in slices:
             res = self.check_channelization(graph, inc, edges, x)
@@ -264,7 +284,7 @@ class Data():
     def check_slice_channelization(self, graph: Graph, inc: Incidence, \
         edges: Edges, time: float) -> None:
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
-        slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
+        slices = np.linspace(np.min(pos_x), np.max(pos_x), 102)[1:-1]
         channels_tab = []
         for x in slices:
             res = self.check_channelization(graph, inc, edges, x)
@@ -279,7 +299,7 @@ class Data():
         to files slices.png, slices_no_div.png, slices_norm.png.
         """
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
-        slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
+        slices = np.linspace(np.min(pos_x), np.max(pos_x), 102)[1:-1]
         edge_number  = np.array(self.slices[0])
         plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
@@ -315,27 +335,45 @@ class Data():
         to files slices.png, slices_no_div.png, slices_norm.png.
         """
         pos_x = np.array(list(nx.get_node_attributes(graph, 'pos').values()))[:,0]
-        slices = np.linspace(np.min(pos_x), np.max(pos_x), 120)[10:-10]
+        slices = np.linspace(np.min(pos_x), np.max(pos_x), 102)[1:-1]
         edge_number  = np.array(self.slices[0])
         i_start = 5
-        i_division = sid.tmax // sid.track_every // 10
+        i_division = sid.dissolved_v_max // sid.track_every // 5
         plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
             if i < i_start:
-                plt.plot(slices, np.array(channeling) / edge_number, \
+                plt.plot(slices, (edge_number - 2 * np.array(channeling)) / edge_number - (edge_number - 2 * np.array(self.slices[1])) / edge_number, \
                         label = self.slice_times[i])
         plt.xlabel('x')
         plt.ylabel('channeling [%]')
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig(self.dirname + '/slices_start.png')
+        plt.savefig(self.dirname + '/slices_start.pdf')
         plt.close()
         plt.figure(figsize = (10, 10))
         for i, channeling in enumerate(self.slices[1:]):
             if i % i_division == 0:
-                plt.plot(slices, np.array(channeling) / edge_number, \
+                plt.plot(slices, (edge_number - 2 * np.array(channeling)) / edge_number - (edge_number - 2 * np.array(self.slices[1])) / edge_number, \
                         label = self.slice_times[i])
         plt.xlabel('x')
         plt.ylabel('channeling [%]')
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig(self.dirname + '/slices.png')
+        plt.savefig(self.dirname + '/slices.pdf')
+        plt.close()
+
+    def plot_participation(self, sid: SimInputData):
+        plt.figure(figsize = (10, 10))
+        plt.title('Participation ratio')
+        ax_p = plt.subplot()
+        ax_p.set_title('Participation ratio')
+        ax_p.set_ylim(0, 1)
+        ax_p.set_xlim(0, sid.dissolved_v_max / self.vol_init)
+        ax_p.set_xlabel('dissolved v')
+        ax_p.set_ylabel('participation ratio')
+        ax_p2 = ax_p.twinx()
+        x = np.linspace(0, sid.dissolved_v_max / self.vol_init, len(self.participation_ratio))
+        ax_p2.plot(x, self.participation_ratio_nom, label = "pi", color='green', linestyle='dashed')
+        ax_p2.plot(x, self.participation_ratio_denom, label = "pi'", color='red', linestyle='dashed')
+        ax_p.plot(x, self.participation_ratio)
+        ax_p2.legend()
+        plt.savefig(self.dirname + '/participation_ratio.pdf')
         plt.close()

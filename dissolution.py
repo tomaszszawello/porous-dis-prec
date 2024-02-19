@@ -45,12 +45,13 @@ def create_vector(sid: SimInputData, graph: Graph) -> spr.csc_matrix:
     scipy sparse vector
         result vector for B concentration calculation
     """
-    data, row, col = [], [], []
-    for node in graph.in_nodes:
-        data.append(sid.cb_in)
-        row.append(node)
-        col.append(0)
-    return spr.csc_matrix((data, (row, col)), shape=(sid.nsq, 1))
+    # data, row, col = [], [], []
+    # for node in graph.in_nodes:
+    #     data.append(sid.cb_in)
+    #     row.append(node)
+    #     col.append(0)
+    # return spr.csc_matrix((data, (row, col)), shape=(sid.nsq, 1))
+    return sid.cb_in * graph.in_vec
 
 def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     edges: Edges, cb_b: spr.csc_matrix) -> np.ndarray:
@@ -92,6 +93,8 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     # find incidence for cb (only upstream flow matters)
     cb_inc = 1 * (inc.incidence.T @ (spr.diags(edges.flow) \
         @ inc.incidence > 0) != 0)
+    # cb_inc = np.abs(inc.incidence.T @ (spr.diags(edges.flow) \
+    #    @ inc.incidence > 0))
     # find vector with non-diagonal coefficients
     qc = edges.flow * np.exp(-np.abs(sid.Da / (1 + sid.G * edges.diams) \
         * edges.diams * edges.lens / edges.flow))
@@ -99,10 +102,11 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     qc_matrix = np.abs(inc.incidence.T @ spr.diags(qc) @ inc.incidence)
     cb_matrix = cb_inc.multiply(qc_matrix)
     # find diagonal coefficients (inlet flow for each node)
-    diag = np.array(-np.abs(inc.incidence.T @ spr.diags(edges.flow) @ inc.incidence).sum(axis = 1).reshape((1, sid.nsq)) / 2)[0] #-np.abs(inc.incidence.T) @ np.abs(edges.flow) / 2
+    #diag = np.array(-np.abs(inc.incidence.T @ spr.diags(edges.flow) @ inc.incidence).sum(axis = 1).reshape((1, sid.nsq)) / 2)[0] #
     
-    diag = graph.in_vec + 1 * (diag == 0) + diag * (1 + graph.out_vec - graph.in_vec)
+    #diag = graph.in_vec + 1 * (diag == 0) + diag * (1 + graph.out_vec - graph.in_vec)
     
+    diag = -np.abs(inc.incidence.T) @ np.abs(edges.flow) / 2
     # # set diagonal for input nodes to 1
     # for node in graph.in_nodes:
     #     diag[node] = 1
@@ -119,6 +123,9 @@ def solve_dissolution(sid: SimInputData, inc: Incidence, graph: Graph, \
     # for i, node in enumerate(diag):
     #     if node == 0:
     #         diag[i] = 1
+
+    diag = diag * (1 - graph.in_vec + graph.out_vec) + graph.in_vec
+    diag += 1 * (diag == 0)
     # replace diagonal
     cb_matrix.setdiag(diag)
     cb = solve_equation(cb_matrix, cb_b)

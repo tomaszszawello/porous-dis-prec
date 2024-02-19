@@ -59,7 +59,7 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
         graph, edges = Ne.build_delaunay_net(sid, inc)
         Ne.set_geometry(sid, graph)
         In.create_matrices(sid, graph, inc, edges)
-        data = Data(sid)
+        data = Data(sid, edges)
         Sv.save('/template.dill', sid, graph, inc, edges)
         Sv.save_config(sid)
     # 1 - load config and network from data saved at the end of previous
@@ -67,7 +67,8 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
     # incidence and edges (with saved diameters), continue simulation
     elif SimInputData.load == 1:
         sid, graph, inc, edges = Sv.load(SimInputData.load_name+'/save.dill')
-        data = Data(sid)
+        data = Data(sid, edges)
+        data.load_data()
     # 2 - load config from SimInputData, but use graph from a template saved in
     # the directory specified by load_name; based on that create incidence and
     # edges (with initial diameters), also update data in config corresponding
@@ -84,7 +85,7 @@ def build() -> tuple[SimInputData, In.Incidence, De.Graph, In.Edges, Data]:
         sid.ne = sid2.ne
         sid.dirname = sid2.dirname + '/template'
         make_dir(sid)
-        data = Data(sid)
+        data = Data(sid, edges)
         Sv.save_config(sid)
         #import numpy as np
         #graph.in_vec = np.concatenate((np.ones(sid.n), np.zeros(sid.n * (sid.n - 1))))

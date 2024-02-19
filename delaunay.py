@@ -27,7 +27,7 @@ import scipy.spatial as spt
 
 from config import SimInputData
 if TYPE_CHECKING:
-    from incidence import Edges
+    from incidence import Edges, Incidence
 
 
 class Graph(nx.graph.Graph):
@@ -52,7 +52,7 @@ class Graph(nx.graph.Graph):
     def __init__(self):
         nx.graph.Graph.__init__(self)
 
-    def update_network(self, edges: Edges) -> None:
+    def update_network(self, inc: Incidence, edges: Edges) -> None:
         """ Update diameters and flow in the graph.
 
         Parameters
@@ -64,9 +64,12 @@ class Graph(nx.graph.Graph):
             diams - diameters of edges
             flow - flow in edges
         """
-        nx.set_edge_attributes(self, dict(zip(edges.edge_list, edges.diams)), \
+        merged_number = inc.plot.sum(axis = 0)
+        diams = inc.plot @ edges.diams / merged_number
+        flow = inc.plot @ edges.flow / merged_number
+        nx.set_edge_attributes(self, dict(zip(edges.edge_list, diams)), \
             'd')
-        nx.set_edge_attributes(self, dict(zip(edges.edge_list, edges.flow)), \
+        nx.set_edge_attributes(self, dict(zip(edges.edge_list, flow)), \
             'q')
 
     def find_node(self, pos: tuple[float, float]) -> int:

@@ -45,12 +45,13 @@ def create_vector(sid: SimInputData, graph: Graph) -> spr.csc_matrix:
     scipy sparse vector
         result vector for pressure calculation
     """
-    data, row, col = [], [], []
-    for node in graph.in_nodes:
-        data.append(1)
-        row.append(node)
-        col.append(0)
-    return spr.csc_matrix((data, (row, col)), shape=(sid.nsq, 1))
+    # data, row, col = [], [], []
+    # for node in graph.in_nodes:
+    #     data.append(1)
+    #     row.append(node)
+    #     col.append(0)
+    # return spr.csc_matrix((data, (row, col)), shape=(sid.nsq, 1))
+    return graph.in_vec
 
 def solve_flow(sid: SimInputData, inc: Incidence, graph: Graph, edges: Edges, \
     pressure_b: spr.csc_matrix) -> np.ndarray:
